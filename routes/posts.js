@@ -1,23 +1,31 @@
 const express = require("express");
 const router = express.Router();
-const Post = require("../models/post");
+const Post = require("../models/posts");
+const User = require("../models/users");
 
 const handleError = require("../handleError");
 const handleSuccess = require("../handleSuccess");
 
 // 取得所有貼文
 router.get("/", async (req, res, next) => {
-  const posts = await Post.find();
+  // asc 遞增(由小到大，由舊到新) createdAt ;
+  // desc 遞減(由大到小、由新到舊) "-createdAt"
+  const timeSort = req.query.timeSort == "asc" ? "createdAt":"-createdAt"
+  const q = req.query.q !== undefined ? {"content": new RegExp(req.query.q)} : {};
+  const posts = await Post.find(q).populate({
+    path: 'user',
+    select: 'name photo '
+  }).sort(timeSort);
   handleSuccess(res, posts, "資料取得成功");
 });
 
 // 新增一筆貼文
 router.post("/", async (req, res, next) => {
   try {
-    const { name, content, image, likes, tags } = req.body;
-    if (content && name && tags.length) {
+    const { user, content, image, likes, tags } = req.body;
+    if (content && user && tags.length) {
       const newPost = await Post.create({
-        name: typeof name === "string" ? name.trim() : "",
+        user: typeof user === "string" ? user.trim() : "",
         content: typeof content === "string" ? content.trim() : "",
         image: typeof image === "string" ? image.trim() : "",
         likes,
@@ -69,12 +77,12 @@ router.patch("/:id", async (req, res, next) => {
   try {
     const id = req.params.id;
     const findId = await Post.findById(id);
-    const { name, content, tags, likes, image } = req.body;
-    if (findId.id && name && content && tags.length) {
+    const { user, content, tags, likes, image } = req.body;
+    if (findId.id && user && content && tags.length) {
       const updatePost = await Post.findByIdAndUpdate(
         id,
         {
-          name: typeof name === "string" ? name.trim() : "",
+          user: typeof user === "string" ? user.trim() : "",
           content: typeof content === "string" ? content.trim() : "",
           image: typeof image === "string" ? image.trim() : "",
           likes,
